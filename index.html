@@ -376,18 +376,18 @@
 
     /* GPU Page Turn Animations */
     .anim-slide-next {
-      animation: slideFromRight 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: slideFromRight 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
     .anim-slide-prev {
-      animation: slideFromLeft 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      animation: slideFromLeft 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
     .anim-flip-next {
       transform-origin: left center;
-      animation: flipPageNext 320ms cubic-bezier(0.25, 0.9, 0.35, 1) forwards;
+      animation: flipPageNext 800ms cubic-bezier(0.25, 0.9, 0.35, 1) forwards;
     }
     .anim-flip-prev {
       transform-origin: right center;
-      animation: flipPagePrev 320ms cubic-bezier(0.25, 0.9, 0.35, 1) forwards;
+      animation: flipPagePrev 800ms cubic-bezier(0.25, 0.9, 0.35, 1) forwards;
     }
 
     @keyframes slideFromRight {
@@ -405,6 +405,63 @@
     @keyframes flipPagePrev {
       0% { transform: rotateY(-14deg) translate3d(-2%, 0, 0); opacity: 0.78; }
       100% { transform: rotateY(0deg) translate3d(0, 0, 0); opacity: 1; }
+    }
+
+    /* 3D page turn: a leaf hinged on the spine rotates over the page.
+       The leaf's own perspective wrapper gives the rotation real depth. */
+    .leaf-wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 12;
+      pointer-events: none;
+      perspective: 1800px;
+      perspective-origin: 50% 50%;
+    }
+    .leaf-cast {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .leaf {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .leaf-face {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background-color: var(--bg-page);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .leaf-back {
+      transform: rotateY(180deg);
+    }
+    .leaf-face > .page-sheet {
+      width: 100%;
+      height: 100%;
+    }
+    .leaf-shade {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .hinge-left .leaf-front .leaf-shade {
+      background: linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 75%);
+    }
+    .hinge-left .leaf-back .leaf-shade {
+      background: linear-gradient(to left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 75%);
+    }
+    .hinge-right .leaf-front .leaf-shade {
+      background: linear-gradient(to left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 75%);
+    }
+    .hinge-right .leaf-back .leaf-shade {
+      background: linear-gradient(to right, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 75%);
     }
 
     /* Apple Books Style Top & Bottom HUD Bars */
@@ -572,11 +629,6 @@
   <!-- Bottom Scrubber HUD -->
   <footer id="bottom-hud" class="hud-bar px-4 sm:px-8 py-3">
     <div class="max-w-5xl mx-auto flex flex-col gap-2">
-      <!-- Live Scrubbing Tooltip -->
-      <div id="scrub-tooltip" class="hidden mx-auto px-3 py-1 rounded-full text-xs font-medium bg-[#252F2A] border border-white/15 text-white shadow-lg">
-        Book 1 • Chapter 1 — Page 1
-      </div>
-
       <div class="flex items-center gap-3 sm:gap-4">
         <button id="btn-prev-spread" class="btn-control p-2 rounded-xl shrink-0" title="Previous Page (Left Arrow)">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
@@ -584,9 +636,7 @@
           </svg>
         </button>
 
-        <div class="flex-1 flex flex-col gap-1">
-          <input id="page-scrubber" type="range" min="1" max="1" value="1" class="hp-slider" aria-label="Page scrubber" />
-        </div>
+        <div class="flex-1"></div>
 
         <button id="btn-next-spread" class="btn-control p-2 rounded-xl shrink-0" title="Next Page (Right Arrow)">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
@@ -598,20 +648,9 @@
       <div class="flex items-center justify-between text-[11px] sm:text-xs text-white/65 px-1">
         <span id="hud-chapter-progress">Chapter 1 of 17</span>
 
-        <button id="btn-goto-page" class="px-2.5 py-0.5 rounded-lg hover:bg-[#252F2A] text-white font-medium transition-colors" title="Click to jump to page number">
-          Page <span id="hud-current-page" class="text-[#E2C07D] font-semibold">1</span> of <span id="hud-total-pages">1</span>
-        </button>
-
         <span id="hud-percent-read">0%</span>
       </div>
 
-      <!-- Inline Go-To-Page Bar -->
-      <div id="goto-page-bar" class="hidden pt-1 flex items-center justify-center gap-2">
-        <label for="goto-page-input" class="text-xs text-white/70">Go to page:</label>
-        <input id="goto-page-input" type="number" min="1" class="w-24 px-2.5 py-1 rounded-lg bg-[#121715] border border-white/15 text-xs text-white focus:outline-none focus:border-[#E2C07D]" />
-        <button id="btn-goto-submit" class="px-3 py-1 rounded-lg bg-[#E2C07D] text-[#121715] text-xs font-semibold hover:opacity-90">Go</button>
-        <button id="btn-goto-cancel" class="px-2.5 py-1 rounded-lg btn-control text-xs">Cancel</button>
-      </div>
     </div>
   </footer>
 
@@ -1710,17 +1749,8 @@
         hudBookTitle: document.getElementById('hud-book-title'),
         hudChapterTitle: document.getElementById('hud-chapter-title'),
         hudChapterProgress: document.getElementById('hud-chapter-progress'),
-        hudCurrentPage: document.getElementById('hud-current-page'),
-        hudTotalPages: document.getElementById('hud-total-pages'),
         hudPercentRead: document.getElementById('hud-percent-read'),
-        pageScrubber: document.getElementById('page-scrubber'),
-        scrubTooltip: document.getElementById('scrub-tooltip'),
 
-        btnGotoPage: document.getElementById('btn-goto-page'),
-        gotoPageBar: document.getElementById('goto-page-bar'),
-        gotoPageInput: document.getElementById('goto-page-input'),
-        btnGotoSubmit: document.getElementById('btn-goto-submit'),
-        btnGotoCancel: document.getElementById('btn-goto-cancel'),
 
         btnToggleBookmark: document.getElementById('btn-toggle-bookmark'),
         bookmarkIcon: document.getElementById('bookmark-icon'),
@@ -2106,13 +2136,17 @@
         state.globalPage = leftDesc.globalPage;
 
         const curEl = dom.spreadCurrent;
+        flushPageTurn();
         curEl.classList.remove('anim-slide-next', 'anim-slide-prev', 'anim-flip-next', 'anim-flip-prev');
-        curEl.innerHTML = currentHtml;
-
-        if (animationDirection) {
-          void curEl.offsetWidth;
-          const prefix = state.settings.animationStyle === 'slide' ? 'anim-slide-' : 'anim-flip-';
-          curEl.classList.add(`${prefix}${animationDirection}`);
+        if (animationDirection && state.settings.animationStyle !== 'slide') {
+          const outgoingSheets = Array.from(curEl.querySelectorAll('.page-sheet')).map(n => n.cloneNode(true));
+          playPageTurn(outgoingSheets, currentHtml, curEl, animationDirection);
+        } else {
+          curEl.innerHTML = currentHtml;
+          if (animationDirection) {
+            void curEl.offsetWidth;
+            curEl.classList.add(`anim-slide-${animationDirection}`);
+          }
         }
 
         // Pre-populate prev & next windowed spread buffers
@@ -2127,6 +2161,125 @@
 
         updateHudAndScrubber();
         persistReadingPosition();
+      }
+
+      /* 3D page turn. A leaf hinged on the spine carries the page being turned over
+         and shows the page revealed on its back. On a back turn the old page stays
+         on screen until the leaf lands, so nothing changes before the turn. */
+      const PAGE_TURN_MS = 1600;
+
+      function finishPageTurn() {
+        const turn = state.activeLeafTurn;
+        if (!turn) return;
+        state.activeLeafTurn = null;
+        turn.wrap.remove();
+        turn.commit();
+      }
+
+      function flushPageTurn() {
+        const turn = state.activeLeafTurn;
+        if (!turn) return;
+        turn.anim.finish();
+        finishPageTurn();
+      }
+
+      function playPageTurn(outgoing, newHtml, spreadEl, direction) {
+        const staging = document.createElement('div');
+        staging.innerHTML = newHtml;
+        const incoming = Array.from(staging.querySelectorAll('.page-sheet'));
+        const twoPage = getEffectiveSpreadCount() === 2;
+        const needed = twoPage ? 2 : 1;
+        if (outgoing.length < needed || incoming.length < needed) {
+          spreadEl.innerHTML = newHtml;
+          return;
+        }
+
+        const deferSwap = direction === 'prev';
+        if (!deferSwap) spreadEl.innerHTML = newHtml;
+
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const duration = reduceMotion ? 300 : PAGE_TURN_MS;
+
+        let front, back, hinge, leafLeft, leafWidth, from, to, castLeft, castWidth, castGradient;
+        if (twoPage) {
+          leafWidth = '50%';
+          if (direction === 'next') {
+            // right page lifts over the spine onto the left
+            front = outgoing[1];
+            back = incoming[0].cloneNode(true);
+            hinge = 'left'; leafLeft = '50%';
+            from = 'rotateY(0deg)'; to = 'rotateY(-180deg)';
+            castLeft = '50%'; castWidth = '50%';
+            castGradient = 'linear-gradient(to right, rgba(0,0,0,0.55), rgba(0,0,0,0) 85%)';
+          } else {
+            // left page lifts over the spine onto the right
+            front = outgoing[0];
+            back = incoming[1].cloneNode(true);
+            hinge = 'right'; leafLeft = '0%';
+            from = 'rotateY(0deg)'; to = 'rotateY(180deg)';
+            castLeft = '0%'; castWidth = '50%';
+            castGradient = 'linear-gradient(to left, rgba(0,0,0,0.55), rgba(0,0,0,0) 85%)';
+          }
+        } else {
+          leafWidth = '100%'; leafLeft = '0%'; hinge = 'left';
+          castLeft = '0%'; castWidth = '100%';
+          castGradient = 'linear-gradient(to right, rgba(0,0,0,0.45), rgba(0,0,0,0) 90%)';
+          if (direction === 'next') {
+            front = outgoing[0];
+            back = incoming[0].cloneNode(true);
+            from = 'rotateY(0deg)'; to = 'rotateY(-180deg)';
+          } else {
+            // previous page swings in over the left edge and lands on top
+            front = incoming[0].cloneNode(true);
+            back = outgoing[0];
+            from = 'rotateY(-180deg)'; to = 'rotateY(0deg)';
+          }
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'leaf-wrap';
+
+        const cast = document.createElement('div');
+        cast.className = 'leaf-cast';
+        cast.style.left = castLeft;
+        cast.style.width = castWidth;
+        cast.style.background = castGradient;
+
+        const leaf = document.createElement('div');
+        leaf.className = `leaf hinge-${hinge}`;
+        leaf.style.left = leafLeft;
+        leaf.style.width = leafWidth;
+        leaf.style.transformOrigin = `${hinge} center`;
+
+        const frontFace = document.createElement('div');
+        frontFace.className = 'leaf-face leaf-front';
+        const backFace = document.createElement('div');
+        backFace.className = 'leaf-face leaf-back';
+        const frontShade = document.createElement('div');
+        frontShade.className = 'leaf-shade';
+        const backShade = document.createElement('div');
+        backShade.className = 'leaf-shade';
+        frontFace.append(front, frontShade);
+        backFace.append(back, backShade);
+        leaf.append(frontFace, backFace);
+        wrap.append(cast, leaf);
+        dom.bookStage.appendChild(wrap);
+
+        const timing = { duration, easing: 'cubic-bezier(0.45, 0.05, 0.3, 1)', fill: 'forwards' };
+        const leafAnim = leaf.animate([{ transform: from }, { transform: to }], timing);
+        const shade = [{ opacity: 0 }, { opacity: 0.4, offset: 0.5 }, { opacity: 0 }];
+        frontShade.animate(shade, { duration, easing: 'ease-in-out' });
+        backShade.animate(shade, { duration, easing: 'ease-in-out' });
+        cast.animate([{ opacity: 0 }, { opacity: 0.9, offset: 0.5 }, { opacity: 0 }], { duration, easing: 'ease-in-out' });
+
+        state.activeLeafTurn = {
+          anim: leafAnim,
+          wrap,
+          commit: deferSwap ? () => { spreadEl.innerHTML = newHtml; } : () => {}
+        };
+        leafAnim.onfinish = () => {
+          if (state.activeLeafTurn && state.activeLeafTurn.anim === leafAnim) finishPageTurn();
+        };
       }
 
       function turnPage(delta) {
@@ -2171,16 +2324,12 @@
         dom.hudBookTitle.textContent = `Book ${ch.bookNumber} • ${ch.bookTitle}`;
         dom.hudChapterTitle.textContent = `${ch.chapterNumber}. ${ch.title}`;
         dom.hudChapterProgress.textContent = `Chapter ${ch.chapterNumber} of ${book ? book.chapters.length : 1}`;
-        dom.hudCurrentPage.textContent = String(state.globalPage);
-        dom.hudTotalPages.textContent = String(state.totalGlobalPages);
 
         const pct = state.totalGlobalPages > 1
           ? Math.round(((state.globalPage - 1) / (state.totalGlobalPages - 1)) * 100)
           : 100;
         dom.hudPercentRead.textContent = `${pct}%`;
 
-        dom.pageScrubber.max = String(state.totalGlobalPages);
-        dom.pageScrubber.value = String(state.globalPage);
 
         const isBookmarked = state.bookmarks.some(
           b => b.globalChapterIdx === state.activeChapterIdx && b.pageInChapter === state.activePageInChapter
@@ -2725,7 +2874,6 @@
         dom.bottomHud.classList.toggle('hud-hidden', !state.hudVisible);
         if (!state.hudVisible) {
           dom.appearancePopover.classList.add('hidden');
-          dom.gotoPageBar.classList.add('hidden');
         }
       }
 
@@ -2804,40 +2952,6 @@
 
         document.getElementById('btn-prev-spread').addEventListener('click', () => turnPage(-1));
         document.getElementById('btn-next-spread').addEventListener('click', () => turnPage(1));
-
-        dom.pageScrubber.addEventListener('input', () => {
-          const val = parseInt(dom.pageScrubber.value, 10) || 1;
-          const desc = getPageDescriptorByGlobal(val);
-          dom.scrubTooltip.classList.remove('hidden');
-          dom.scrubTooltip.textContent = `Book ${desc.chapter.bookNumber} • Ch. ${desc.chapter.chapterNumber}: ${desc.chapter.title} — Page ${val}`;
-        });
-
-        dom.pageScrubber.addEventListener('change', () => {
-          dom.scrubTooltip.classList.add('hidden');
-          const val = parseInt(dom.pageScrubber.value, 10) || 1;
-          jumpToGlobalPage(val, true);
-        });
-
-        dom.btnGotoPage.addEventListener('click', () => {
-          dom.gotoPageBar.classList.toggle('hidden');
-          if (!dom.gotoPageBar.classList.contains('hidden')) {
-            dom.gotoPageInput.max = String(state.totalGlobalPages);
-            dom.gotoPageInput.value = String(state.globalPage);
-            dom.gotoPageInput.focus();
-            dom.gotoPageInput.select();
-          }
-        });
-        dom.btnGotoCancel.addEventListener('click', () => dom.gotoPageBar.classList.add('hidden'));
-        dom.btnGotoSubmit.addEventListener('click', () => {
-          const val = parseInt(dom.gotoPageInput.value, 10);
-          if (!Number.isNaN(val)) {
-            jumpToGlobalPage(val, true);
-          }
-          dom.gotoPageBar.classList.add('hidden');
-        });
-        dom.gotoPageInput.addEventListener('keydown', e => {
-          if (e.key === 'Enter') dom.btnGotoSubmit.click();
-        });
 
         dom.btnToggleBookmark.addEventListener('click', toggleCurrentPageBookmark);
 
@@ -3021,7 +3135,6 @@
           if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
             if (e.key === 'Escape') {
               closeSearchModal();
-              dom.gotoPageBar.classList.add('hidden');
             }
             return;
           }
